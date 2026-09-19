@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="tk">
+<head>
+    <meta charset="UTF-8">
+    <title>imo Web</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { display: flex; height: 100vh; background-color: #d1d7db; }
+
+        /* Left Panel */
+        .sidebar { width: 340px; background: #ffffff; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
+        .sidebar-header { height: 60px; background: #0088cc; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 18px; font-weight: bold; }
+        .user-info { font-size: 13px; opacity: 0.9; font-weight: normal; }
+        .chat-list { flex: 1; overflow-y: auto; }
+        .chat-item { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f0f2f5; cursor: pointer; background: #f0f2f5; }
+        .avatar { width: 45px; height: 45px; background: #0088cc; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; margin-right: 15px; }
+        .chat-details { flex: 1; }
+        .chat-title { font-weight: 600; color: #111b21; font-size: 15px; }
+        .chat-sub { font-size: 13px; color: #667781; margin-top: 3px; }
+
+        /* Main Chat Window */
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
+        .chat-header { height: 60px; background: #f0f2f5; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #e9edef; }
+        .messages-container { flex: 1; padding: 20px 50px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+
+        /* Messages */
+        .msg-row { display: flex; flex-direction: column; max-width: 65%; }
+        .msg-row.sent { align-self: flex-end; }
+        .msg-row.received { align-self: flex-start; }
+
+        .sender-name { font-size: 11px; color: #54656f; margin-bottom: 2px; margin-left: 4px; font-weight: 600; }
+        .msg-bubble { padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; color: #111b21; position: relative; word-wrap: break-word; box-shadow: 0 1px 0.5px rgba(11,20,26,.13); }
+        .sent .msg-bubble { background: #efffde; border-top-right-radius: 0; }
+        .received .msg-bubble { background: #ffffff; border-top-left-radius: 0; }
+
+        .time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; float: right; margin-left: 8px; }
+
+        /* Input Controls */
+        .input-area { height: 62px; background: #f0f2f5; display: flex; align-items: center; padding: 5px 16px; gap: 10px; }
+        .input-area input { flex: 1; height: 42px; border: none; border-radius: 8px; padding: 0 15px; outline: none; font-size: 15px; background: #ffffff; }
+        .send-btn { background: #0088cc; color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .logout-btn { color: white; text-decoration: none; font-size: 13px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div>imo</div>
+            <a href="/logout" class="logout-btn">Çyk</a>
+        </div>
+        <div class="chat-list">
+            <div class="chat-item">
+                <div class="avatar">G</div>
+                <div class="chat-details">
+                    <div class="chat-title">Gizlin Topar</div>
+                    <div class="chat-sub">Online Chat Ulgamy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-chat">
+        <div class="chat-header">
+            <div class="avatar" style="width:38px; height:38px; font-size:15px;">G</div>
+            <div>
+                <div class="chat-title">Gizlin Topar</div>
+                <div style="font-size: 12px; color: #667781;">Siz: <strong>{{ username }}</strong></div>
+            </div>
+        </div>
+
+        <div class="messages-container" id="msg-box"></div>
+
+        <div class="input-area">
+            <input type="text" id="msg-input" placeholder="Hat ýazyň..." onkeypress="checkEnter(event)">
+            <button class="send-btn" onclick="sendMsg()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const CURRENT_USER = "{{ username }}";
+        const socket = io();
+        const msgBox = document.getElementById('msg-box');
+
+        // Öňki hatlary bazadan ýüklemek
+        socket.on('load_history', function(history) {
+            msgBox.innerHTML = '';
+            history.forEach(data => appendMessage(data));
+            scrollToBottom();
+        });
+
+        // Täze gelen haty kabul etmek
+        socket.on('receive_message', function(data) {
+            appendMessage(data);
+            scrollToBottom();
+        });
+
+        function appendMessage(data) {
+            const isMe = data.username === CURRENT_USER;
+            const row = document.createElement('div');
+            row.className = `msg-row ${isMe ? 'sent' : 'received'}`;
+
+            row.innerHTML = `
+                ${!isMe ? `<div class="sender-name">${data.username}</div>` : ''}
+                <div class="msg-bubble">
+                    ${data.message}
+                    <span class="time">${data.timestamp}</span>
+                </div>
+            `;
+            msgBox.appendChild(row);
+        }
+
+        function sendMsg() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (text !== '') {
+                socket.emit('send_message', { text: text });
+                input.value = '';
+            }
+        }
+
+        function checkEnter(e) {
+            if (e.key === 'Enter') sendMsg();
+        }
+
+        function scrollToBottom() {
+            msgBox.scrollTop = msgBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
