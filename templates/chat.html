@@ -151,8 +151,8 @@
         <div class="login-card">
             <h2>imo Chat</h2>
             <p style="font-size: 12px; color: #94a3b8; margin-bottom: 15px;">Akkauntyňyza giriň ýa-da täzesini açyň</p>
-            <input type="text" id="login-user" placeholder="Profil Adyňyz...">
-            <input type="password" id="login-pass" placeholder="Parol...">
+            <input type="text" id="login-user" placeholder="Profil Adyňyz..." onkeypress="checkLoginEnter(event)">
+            <input type="password" id="login-pass" placeholder="Parol..." onkeypress="checkLoginEnter(event)">
             <div class="color-picker-box">
                 <label>Profil Reňkiňiz:</label>
                 <input type="color" id="login-color" value="#38bdf8">
@@ -214,13 +214,13 @@
             const val = document.getElementById('google-input').value.trim();
             if (val === '20.21') {
                 document.getElementById('google-mask').style.display = 'none';
+                document.getElementById('login-user').focus();
             } else if (val !== '') {
-                // location.href ýerine location.replace ulanylsa brauzer taryhyna ýazylmaýar
                 window.location.replace("https://www.google.com/search?q=" + encodeURIComponent(val));
             }
         }
 
-        // LOGIN LOGIKASY (Her gezek gireninde paroly soraýar)
+        // LOGIN LOGIKASY
         function login() {
             const user = document.getElementById('login-user').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
@@ -230,6 +230,12 @@
                 socket.emit('register_or_login', { username: user, password: pass, color: color });
             } else {
                 alert('At we parol giriziň!');
+            }
+        }
+
+        function checkLoginEnter(e) {
+            if (e.key === 'Enter') {
+                login();
             }
         }
 
@@ -292,7 +298,6 @@
         });
 
         socket.on('receive_message', function(data) {
-            // Eger gelen hat häzirki açyk duran çata degişli bolsa görelim
             const isGroup = activeChat === 'Gizlin Topar' && data.receiver === 'Gizlin Topar';
             const isDirectMsg = (data.sender === activeChat && data.receiver === myUsername) ||
                                 (data.sender === myUsername && data.receiver === activeChat);
