@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'imo_real_chat_2026'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Faýllar saklanjak papkasy
 UPLOAD_FOLDER = 'static/uploads'
