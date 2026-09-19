@@ -7,7 +7,13 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'imo_real_chat_2026'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Render/Production üçin CORS we async_mode sazlamalary düzeltdirildi:
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    async_mode='threading'  # Render-de Eventlet ýalňyşlygy bermezligi üçin 'threading' goýuldy
+)
 
 # Faýllar saklanjak papkasy
 UPLOAD_FOLDER = 'static/uploads'
@@ -102,13 +108,11 @@ def upload_file():
         return {'success': False, 'message': 'Faýl saýlanmady'}, 400
 
     filename = secure_filename(file.filename)
-    # Faýlyň adyny täýtmezlik üçin wagt goşýarys
     timestamp_prefix = datetime.now().strftime("%Y%m%d%H%M%S_")
     saved_filename = timestamp_prefix + filename
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], saved_filename)
     file.save(file_path)
 
-    # Faýl tipini kesgitlemek
     ext = filename.split('.')[-1].lower()
     if ext in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
         file_type = 'image'
@@ -174,7 +178,6 @@ def handle_send_msg(data):
         now = datetime.now().strftime("%H:%M")
         save_message(sender, receiver, text, msg_type, color, now)
 
-        # Hat ugradylandan soň täze hat maglumatyny ähli tarapa ýaýratmak
         emit('receive_message', {
             'sender': sender,
             'receiver': receiver,
@@ -185,4 +188,5 @@ def handle_send_msg(data):
         }, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
